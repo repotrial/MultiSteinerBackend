@@ -106,7 +106,7 @@ public class GraphUtils {
 
 
     public List<Vertex> parseNetwork(Graph<Vertex, Link> graph, List<String> proteins, Map<String, ParsedEdge> parsedEdges, List<String> terminalNodesStrings) {
-        System.out.println("Parsing Network in Thread " + Thread.currentThread().getName() + "... ");
+        System.out.println("Parsing Network ... ");
         Map<String, Vertex> nodeMap = new HashMap<>();
         List<Vertex> terminalNodes = new ArrayList<>();
         for (String uniprotID : proteins) {
@@ -129,7 +129,7 @@ public class GraphUtils {
             graph.addEdge(src, targ, edge);
             graph.setEdgeWeight(edge, weight);
         }
-        System.out.println("Done with parsing in Thread " + Thread.currentThread().getName() + "!");
+        System.out.println("Done with parsing!");
         return terminalNodes;
 
     }
@@ -175,7 +175,6 @@ public class GraphUtils {
             double w = (1-hubPenalty)*totalAvDeg+(hubPenalty*eAvDeg);
             double weight = BigDecimal.valueOf(w).setScale(5, RoundingMode.HALF_UP).doubleValue();
             edges.get(l.getUniprotID_Concatinated()).setWeight(weight);
-            //network.getRow(network.getEdge(l.getSuid())).set("weight", weight);
             graph.setEdgeWeight(l, weight);
         }
     }

@@ -1,8 +1,5 @@
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
-
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
@@ -39,7 +36,7 @@ public class MultiSteinerTree {
         if (parallel) {
             //Dijkstra computation: make a FixedThreadPool with the specified number of cores
             ExecutorService threadPoolDijkstra = Executors.newFixedThreadPool(numberOfCores);
-            System.out.println("Made a special FixedThreadPool for the Dijkstra task of thread: " + Thread.currentThread().getName() + " with " + numberOfCores + " places for threads. ");
+            System.out.println("Made a special FixedThreadPool for the Dijkstra task with " + numberOfCores + " places for threads. ");
 
             //CountDownLatch to guarantee that the algorithm waits for the termination of the Dijkstra computation
             CountDownLatch countDownLatch = new CountDownLatch(this.steinerNodes.size() * this.steinerNodes.size());
@@ -219,7 +216,7 @@ public class MultiSteinerTree {
 
     private void runAlgorithm() {
 
-        System.out.println("Computing the MultiSteinerTree in Thread " + Thread.currentThread().getName() + "...");
+        System.out.println("Computing the MultiSteinerTree ...");
 
         Map<Link, List<Link>> spMap = Collections.synchronizedMap(new HashMap<>());
         SimpleWeightedGraph<Vertex, Link> g1 = step1(spMap, this.parallel, this.numberOfCores);
@@ -237,7 +234,7 @@ public class MultiSteinerTree {
         SimpleWeightedGraph<Vertex, Link> g4 = step4(g3);
 
         this.tree = step5(g4);
-        System.out.println("Done with the MultiSteinerTree in Thread " + Thread.currentThread().getName() + "!");
+        System.out.println("Done with the MultiSteinerTree!");
 
 
     }
