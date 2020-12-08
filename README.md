@@ -2,7 +2,6 @@
 MuST command line tool for RepoScape backend
 
 <h3> Options for the jar: </h3> 
-<br> <br>
 <b> Input Files: </b> 
 <br> <br>
 <b> -nw,--network (arg) </b> &nbsp;&nbsp;&nbsp;&nbsp; Path to the Network File (String)
