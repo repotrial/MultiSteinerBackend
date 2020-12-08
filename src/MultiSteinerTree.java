@@ -23,15 +23,6 @@ public class MultiSteinerTree {
         this.parallel = parallel;
         this.numberOfCores = numberOfCores;
 
-        /*double avgweight = 0.0;
-        int sum = 0;
-        for(Link l: graph.edgeSet()){
-            avgweight += l.getWeight();
-            sum ++;
-        }
-        avgweight = avgweight/sum;
-        System.out.println("Sanity check: The average weight of the graph edges is: " + avgweight);
-        */
         runAlgorithm();
 
     }
@@ -39,38 +30,40 @@ public class MultiSteinerTree {
     // Using SimpleWeightedGraph instead of WeightedPseudograph, it's better since it doesn't have selfloop and multiple edges
     private SimpleWeightedGraph<Vertex, Link> step1(Map<Link, List<Link>> spMap, boolean parallel, int numberOfCores) {
 
-        SimpleWeightedGraph<Vertex, Link> g =
-                new SimpleWeightedGraph<>(Link.class);
-
+        SimpleWeightedGraph<Vertex, Link> g = new SimpleWeightedGraph<>(Link.class);
 
         for (Vertex n : this.steinerNodes) {
             g.addVertex(n);
         }
 
         if (parallel) {
+            //Dijkstra computation: make a FixedThreadPool with the specified number of cores
             ExecutorService threadPoolDijkstra = Executors.newFixedThreadPool(numberOfCores);
             System.out.println("Made a special FixedThreadPool for the Dijkstra task of thread: " + Thread.currentThread().getName() + " with " + numberOfCores + " places for threads. ");
+
+            //CountDownLatch to guarantee that the algorithm waits for the termination of the Dijkstra computation
             CountDownLatch countDownLatch = new CountDownLatch(this.steinerNodes.size() * this.steinerNodes.size());
+
             Set<String> linkSet = Collections.synchronizedSet(new HashSet<>());
             Map<String, Link> linkMap = Collections.synchronizedMap(new HashMap<>());
 
             for(Vertex n1: this.steinerNodes){
                 for(Vertex n2: this.steinerNodes){
-
-                    //if(!g.containsEdge(n1, n2) && !g.containsEdge(n2, n1) && !n1.equals(n2)){
                     String link = n1.getUniprotID() + "(-)" + n2.getUniprotID();
                     String linkReverse = n2.getUniprotID() + "(-)" + n2.getUniprotID();
+
                     if(!n1.equals(n2) && !linkSet.contains(link) && !linkSet.contains(linkReverse)){
                         CompletableFuture
                                 .supplyAsync(() -> DijkstraShortestPath.findPathBetween(this.graph, n1, n2), threadPoolDijkstra)
                                 .thenAccept(vertexLinkGraphPath -> memorizeWeights(n1, n2, vertexLinkGraphPath, spMap, linkMap, countDownLatch));
-                        //.thenAcceptAsync(vertexLinkGraphPath -> addEdges(g, n1, n2, vertexLinkGraphPath, spMap, countDownLatch));
                     }else{
                         countDownLatch.countDown();
                     }
+
                     linkSet.add(n1.getUniprotID() + "(-)" + n2.getUniprotID());
                 }
             }
+            //Wait for the countDownLatches
             try {
                 System.out.println("Awaiting termination for Dijkstra in Thread " + Thread.currentThread().getName() + "...");
                 countDownLatch.await();
@@ -79,6 +72,7 @@ public class MultiSteinerTree {
             }catch (InterruptedException ie){
                 ie.printStackTrace();
             }
+            //add the edges to the graph with their dijkstra weights
             for(Vertex n1: this.steinerNodes){
                 for(Vertex n2: this.steinerNodes){
                     String uniProtConcat = n1.getUniprotID()+ " (-) " + n2.getUniprotID();
@@ -96,12 +90,10 @@ public class MultiSteinerTree {
 
                 }
             }
-
-
+        //now: not parallel computation
         } else {
             for (Vertex n1 : this.steinerNodes) {
                 for (Vertex n2 : this.steinerNodes) {
-
                     if (g.containsEdge(n1, n2) || g.containsEdge(n2, n1) || n1.equals(n2))
                         continue;
                     if (!n1.equals(n2)) {
@@ -128,37 +120,20 @@ public class MultiSteinerTree {
             spMap.put(e, gpath.getEdgeList());
             linkMap.put(e.getUniprotID_Concatinated(), e);
         }finally {
-            //System.out.println("Counting down Dijkstra in thread "+ Thread.currentThread().getName()+ ", latches left: " + countDownLatch.getCount());
             countDownLatch.countDown();
         }
     }
-/*
-    private void addEdges(SimpleWeightedGraph<Vertex, Link> g, Vertex n1, Vertex n2, GraphPath<Vertex, Link> gpath, Map<Link, List<Link>> spMap, CountDownLatch countDownLatch){
-        try {
-            Link e = new Link(n1, n2, gpath.getWeight());
-            g.addEdge(n1, n2, e);
-            g.setEdgeWeight(e, gpath.getWeight());
-            // Keep the shortest path between steiner nodes to avoid computing them again at step 3, Attention: not all of these shortest paths will be used
-            spMap.put(e, gpath.getEdgeList());
-        }finally {
-            //System.out.println("Counting down Dijkstra in thread "+ Thread.currentThread().getName()+ ", latches left: " + countDownLatch.getCount());
-            countDownLatch.countDown();
-        }
-    }*/
 
 
     private SimpleWeightedGraph<Vertex, Link> step2(SimpleWeightedGraph<Vertex, Link> g1) {
 
-        KruskalMinimumSpanningTree<Vertex, Link> mst =
-                new KruskalMinimumSpanningTree<>(g1);
+        KruskalMinimumSpanningTree<Vertex, Link> mst = new KruskalMinimumSpanningTree<>(g1);
         SpanningTreeAlgorithm.SpanningTree<Link> krst = mst.getSpanningTree();
 
         Set<Link> edges = krst.getEdges();
 
-        SimpleWeightedGraph<Vertex, Link> g2 =
-                new SimpleWeightedGraph<>(Link.class);
+        SimpleWeightedGraph<Vertex, Link> g2 = new SimpleWeightedGraph<>(Link.class);
 
-///////// Can be source of randomness!!!!!! for deterministic iteration maybe needs to be sorted and kept as list
         for (Link edge : edges) {
             g2.addVertex(edge.getSource());
             g2.addVertex(edge.getTarget());
@@ -171,8 +146,7 @@ public class MultiSteinerTree {
     private SimpleWeightedGraph<Vertex, Link> step3(SimpleWeightedGraph<Vertex, Link> g2, Map<Link, List<Link>> spMap) {
 
 
-        SimpleWeightedGraph<Vertex, Link> g3 =
-                new SimpleWeightedGraph<>(Link.class);
+        SimpleWeightedGraph<Vertex, Link> g3 = new SimpleWeightedGraph<>(Link.class);
 
 ///////// Can be source of randomness!!!!!! for deterministic iteration maybe needs to be sorted and kept as list
         Set<Link> edges = g2.edgeSet();
@@ -206,28 +180,9 @@ public class MultiSteinerTree {
         return g3;
     }
 
+    //step 4 is equal to step 2
     private SimpleWeightedGraph<Vertex, Link> step4(SimpleWeightedGraph<Vertex, Link> g3) {
-
-
-        KruskalMinimumSpanningTree<Vertex, Link> mst =
-                new KruskalMinimumSpanningTree<>(g3);
-
-        SpanningTreeAlgorithm.SpanningTree<Link> krst = mst.getSpanningTree();
-
-
-        Set<Link> edges = krst.getEdges();
-
-        SimpleWeightedGraph<Vertex, Link> g4 =
-                new SimpleWeightedGraph<>(Link.class);
-
-        for (Link edge : edges) {
-            g4.addVertex(edge.getSource());
-            g4.addVertex(edge.getTarget());
-            g4.addEdge(edge.getSource(), edge.getTarget(), edge);
-        }
-
-
-        return g4;
+        return step2(g3);
     }
 
     private SimpleWeightedGraph<Vertex, Link> step5(SimpleWeightedGraph<Vertex, Link> g4) {
