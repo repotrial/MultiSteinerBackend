@@ -1,5 +1,5 @@
 # MultiSteinerBackend
-MuST command line tool for RepoScape backend
+MuST command line tool for NeDRex backend
 
 <h3> Options for the jar: </h3> 
 <b> Input Files: </b> 
